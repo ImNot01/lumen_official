@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { USERNAME_RE, mapAuthError } from '../lib/errors'
 import { Alert, AuthShell, Field, Spinner } from '../components/ui'
+import GoogleSignInButton from '../components/GoogleSignInButton'
 
 type UState = 'idle' | 'checking' | 'ok' | 'taken' | 'invalid' | 'error'
 
@@ -99,8 +100,16 @@ export default function Register() {
         </>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <div className="space-y-4">
         {error && <Alert kind="error">{error}</Alert>}
+        <GoogleSignInButton onError={setError} disabled={busy} />
+      </div>
+      <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+        <span>or sign up with email</span>
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+      </div>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         {notice && <Alert kind="success">{notice}</Alert>}
         <Field label="Name" id="display_name" autoComplete="name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} maxLength={50} placeholder="Your name" />
         <Field

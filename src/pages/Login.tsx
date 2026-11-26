@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { mapAuthError } from '../lib/errors'
 import { Alert, AuthShell, Field, Spinner } from '../components/ui'
+import GoogleSignInButton from '../components/GoogleSignInButton'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -39,8 +40,16 @@ export default function Login() {
         </>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <div className="space-y-4">
         {error && <Alert kind="error">{error}</Alert>}
+        <GoogleSignInButton onError={setError} disabled={busy} />
+      </div>
+      <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+        <span>or sign in with email</span>
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+      </div>
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <Field label="Email" id="email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
         <Field label="Password" id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Your password" />
         <div className="text-right text-sm">
