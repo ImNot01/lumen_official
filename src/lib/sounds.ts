@@ -49,6 +49,12 @@ export function playMessageSound() {
   playTone(880, 0.2, 0.09, 0.045)
 }
 
+function playCallAlert() {
+  playTone(523, 0.24, 0, 0.043, 'triangle')
+  playTone(698, 0.28, 0.3, 0.043, 'triangle')
+  playTone(587, 0.3, 0.68, 0.043, 'triangle')
+}
+
 export function startRingtone(callId: string): () => void {
   const lockKey = `lumen:call-sound:${callId}`
   const claim = `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -62,9 +68,7 @@ export function startRingtone(callId: string): () => void {
   let stopped = false
   const ring = () => {
     if (stopped) return
-    playTone(494, 0.32, 0, 0.038, 'triangle')
-    playTone(659, 0.34, 0.38, 0.038, 'triangle')
-    playTone(494, 0.32, 0.82, 0.038, 'triangle')
+    playCallAlert()
   }
   ring()
   const timer = window.setInterval(ring, 3600)
@@ -93,8 +97,7 @@ export function startRingback(callId: string): () => void {
   let stopped = false
   const ring = () => {
     if (stopped) return
-    playTone(494, 0.44, 0, 0.038, 'triangle')
-    playTone(659, 0.44, 0.52, 0.038, 'triangle')
+    playCallAlert()
   }
   ring()
   const timer = window.setInterval(ring, 4000)
