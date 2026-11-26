@@ -721,7 +721,7 @@ export default function Conversation({ id }: { id: string }) {
         <button
           type="button"
           onClick={() => {
-            if (otherId) void calls.startCall(id, otherId, title, false)
+            if (otherId) void calls.startCall(id, otherId, title, false, other?.avatar_path)
           }}
           disabled={isGroup || !otherId}
           aria-label="Start audio call"
@@ -733,7 +733,7 @@ export default function Conversation({ id }: { id: string }) {
         <button
           type="button"
           onClick={() => {
-            if (otherId) void calls.startCall(id, otherId, title, true)
+            if (otherId) void calls.startCall(id, otherId, title, true, other?.avatar_path)
           }}
           disabled={isGroup || !otherId}
           aria-label="Start video call"

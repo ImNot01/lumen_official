@@ -92,10 +92,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     ch.on('postgres_changes', {
       event: 'INSERT',
       schema: 'public',
-      table: 'call_signals',
-      filter: `recipient_id=eq.${me}`,
+      table: 'messages',
     }, (change) => {
-      receiveCallSignal(change.new as Parameters<typeof receiveCallSignal>[0])
+      const record = change.new
+      if (record.sender_id !== me) {
+        window.clearTimeout(deliverTimer)
+        deliverTimer = window.setTimeout(() => fire(supabase.rpc('mark_delivered')), 400)
+      }
+      emit('message', { op: 'INSERT', record })
     })
     ch.subscribe((s) => {
       if (cancelled) return
@@ -130,6 +134,25 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       void supabase.removeChannel(ch)
     }
   }, [me, emit, receiveCallSignal])
+
+  // Call signaling uses a public Realtime subscription because postgres_changes
+  // is not delivered through private broadcast channels.
+  useEffect(() => {
+    if (!me) return
+    const ch = supabase.channel(`call-signals:${me}`)
+    ch.on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'call_signals',
+      filter: `recipient_id=eq.${me}`,
+    }, (change) => {
+      receiveCallSignal(change.new as Parameters<typeof receiveCallSignal>[0])
+    })
+    void ch.subscribe()
+    return () => {
+      void supabase.removeChannel(ch)
+    }
+  }, [me, receiveCallSignal])
 
   // who is online right now (real connections only)
   useEffect(() => {

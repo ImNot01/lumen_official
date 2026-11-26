@@ -73,6 +73,10 @@ declare
   function_url text;
   webhook_secret text;
 begin
+  if new.kind = 'system' then
+    return new;
+  end if;
+
   select decrypted_secret into function_url
     from vault.decrypted_secrets where name = 'lumen_push_function_url' limit 1;
   select decrypted_secret into webhook_secret

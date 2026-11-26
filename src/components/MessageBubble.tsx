@@ -35,6 +35,7 @@ function MessageBubbleBase(p: Props) {
   const deleted = Boolean(msg.deleted_at)
   const sent = msg.status === 'sent'
   const failed = msg.status === 'failed'
+  const callMessage = msg.kind === 'system'
 
   const groups = new Map<string, { count: number; mine: boolean }>()
   for (const r of p.reactions) {
@@ -62,6 +63,15 @@ function MessageBubbleBase(p: Props) {
       id={`m-${msg.id}`}
       className={`flex flex-col ${mine ? 'items-end' : 'items-start'} animate-fade-in rounded-2xl transition-colors duration-300 ${p.highlighted ? 'bg-brand-500/15' : ''}`}
     >
+      {callMessage ? (
+        <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-4 py-2 text-sm text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/[0.06] dark:text-slate-300">
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${msg.body?.toLowerCase().includes('missed') ? 'bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300' : 'bg-brand-100 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'}`}>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2A19.8 19.8 0 0 1 11.2 19a19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 2 .7 2.9a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.2-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.9.7a2 2 0 0 1 1.8 2.1z" /></svg>
+          </span>
+          <span>{msg.body || 'Call'}</span>
+          <span className="text-xs text-slate-400">{clock(msg.created_at)}</span>
+        </div>
+      ) : (
       <div className="max-w-[82%] md:max-w-[70%]">
         {p.senderLabel && (
           <p className="mb-0.5 px-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{p.senderLabel}</p>
@@ -150,6 +160,7 @@ function MessageBubbleBase(p: Props) {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
