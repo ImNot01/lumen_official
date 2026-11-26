@@ -62,13 +62,12 @@ export function startRingtone(callId: string): () => void {
   let stopped = false
   const ring = () => {
     if (stopped) return
-    playTone(392, 0.42, 0, 0.035)
-    playTone(523, 0.42, 0.48, 0.035)
-    playTone(659, 0.55, 0.96, 0.035)
-    playTone(523, 0.45, 1.58, 0.035)
+    playTone(494, 0.3, 0, 0.048)
+    playTone(587, 0.38, 0.36, 0.048)
+    playTone(494, 0.3, 0.8, 0.048)
   }
   ring()
-  const timer = window.setInterval(ring, 4000)
+  const timer = window.setInterval(ring, 3600)
 
   return () => {
     stopped = true
@@ -94,11 +93,11 @@ export function startRingback(callId: string): () => void {
   let stopped = false
   const ring = () => {
     if (stopped) return
-    playTone(440, 1.6, 0, 0.035)
-    playTone(480, 1.6, 0, 0.035)
+    playTone(440, 0.62, 0, 0.042)
+    playTone(494, 0.62, 0.75, 0.042)
   }
   ring()
-  const timer = window.setInterval(ring, 5000)
+  const timer = window.setInterval(ring, 4000)
 
   return () => {
     stopped = true
