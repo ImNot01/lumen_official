@@ -62,11 +62,13 @@ export function startRingtone(callId: string): () => void {
   let stopped = false
   const ring = () => {
     if (stopped) return
-    playTone(480, 0.42, 0, 0.07)
-    playTone(620, 0.42, 0.18, 0.07)
+    playTone(392, 0.42, 0, 0.035)
+    playTone(523, 0.42, 0.48, 0.035)
+    playTone(659, 0.55, 0.96, 0.035)
+    playTone(523, 0.45, 1.58, 0.035)
   }
   ring()
-  const timer = window.setInterval(ring, 1800)
+  const timer = window.setInterval(ring, 4000)
 
   return () => {
     stopped = true
@@ -75,6 +77,36 @@ export function startRingtone(callId: string): () => void {
       if (localStorage.getItem(lockKey) === claim) localStorage.removeItem(lockKey)
     } catch (error) {
       console.error('Could not clear the call sound marker', error)
+    }
+  }
+}
+
+export function startRingback(callId: string): () => void {
+  const lockKey = `lumen:ringback:${callId}`
+  const claim = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  try {
+    if (localStorage.getItem(lockKey)) return () => undefined
+    localStorage.setItem(lockKey, claim)
+  } catch (error) {
+    console.error('Could not coordinate ringback sounds between tabs', error)
+  }
+
+  let stopped = false
+  const ring = () => {
+    if (stopped) return
+    playTone(440, 1.6, 0, 0.035)
+    playTone(480, 1.6, 0, 0.035)
+  }
+  ring()
+  const timer = window.setInterval(ring, 5000)
+
+  return () => {
+    stopped = true
+    window.clearInterval(timer)
+    try {
+      if (localStorage.getItem(lockKey) === claim) localStorage.removeItem(lockKey)
+    } catch (error) {
+      console.error('Could not clear the ringback sound marker', error)
     }
   }
 }

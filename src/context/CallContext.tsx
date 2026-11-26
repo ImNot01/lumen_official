@@ -5,7 +5,7 @@ import { uuid } from '../lib/chat'
 import { useAuth } from './AuthContext'
 import { useRealtime } from './RealtimeContext'
 import { Avatar } from '../components/Avatar'
-import { startRingtone } from '../lib/sounds'
+import { startRingback, startRingtone } from '../lib/sounds'
 
 type CallStatus = 'ringing' | 'connecting' | 'connected' | 'failed'
 type CallInfo = {
@@ -18,6 +18,7 @@ type CallInfo = {
   direction: 'incoming' | 'outgoing'
   status: CallStatus
   error?: string
+  notice?: string
 }
 type SignalType = 'offer' | 'answer' | 'candidate' | 'hangup' | 'decline' | 'busy'
 type Signal = {
@@ -74,6 +75,20 @@ function mediaErrorMessage(error: unknown): string {
     if (error.name === 'NotReadableError') return 'Your camera or microphone is busy in another app.'
   }
   return error instanceof Error ? error.message : 'Could not start the call.'
+}
+
+async function getCallMedia(video: boolean): Promise<{ stream: MediaStream; video: boolean; notice?: string }> {
+  try {
+    return { stream: await navigator.mediaDevices.getUserMedia({ audio: true, video }), video }
+  } catch (error) {
+    if (!video || !(error instanceof DOMException) || error.name !== 'NotReadableError') throw error
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    return {
+      stream,
+      video: false,
+      notice: 'Your camera is in use by another app. Continuing as an audio call.',
+    }
+  }
 }
 
 export function CallProvider({ children }: { children: ReactNode }) {
@@ -200,32 +215,36 @@ export function CallProvider({ children }: { children: ReactNode }) {
       if (stream) setRemoteStream(stream)
     }
     peer.onconnectionstatechange = () => {
+      const current = callRef.current
+      if (!current || current.id !== active.id) return
       if (peer.connectionState === 'connected') {
         connectedRef.current = true
         if (connectedSinceRef.current === null) connectedSinceRef.current = Date.now()
         window.clearTimeout(ringTimerRef.current)
         window.clearTimeout(disconnectTimerRef.current)
         disconnectTimerRef.current = undefined
-        updateCall({ ...active, status: 'connected' })
+        updateCall({ ...current, status: 'connected' })
       } else if (peer.connectionState === 'failed') {
         const duration = connectedSinceRef.current === null ? 0 : Math.floor((Date.now() - connectedSinceRef.current) / 1000)
-        void logCall(active, connectedRef.current ? 'completed' : 'failed', duration)
-        void send(active.peerId, {
+        void logCall(current, connectedRef.current ? 'completed' : 'failed', duration)
+        void send(current.peerId, {
           type: 'hangup',
-          call_id: active.id,
-          conversation_id: active.conversationId,
+          call_id: current.id,
+          conversation_id: current.conversationId,
         }).catch((error: unknown) => console.error('Unable to notify the other participant that the call failed', error))
         releaseMedia()
-        updateCall({ ...active, status: 'failed', error: 'Could not establish a direct connection. A TURN server may be required on this network.' })
+        updateCall({ ...current, status: 'failed', error: 'Could not establish a direct connection. A TURN server may be required on this network.' })
       } else if (peer.connectionState === 'disconnected') {
-        updateCall({ ...active, status: 'connecting' })
+        updateCall({ ...current, status: 'connecting' })
         window.clearTimeout(disconnectTimerRef.current)
         disconnectTimerRef.current = window.setTimeout(() => {
           if (peerRef.current !== peer || peer.connectionState !== 'disconnected') return
+          const disconnectedCall = callRef.current
+          if (!disconnectedCall || disconnectedCall.id !== active.id) return
           const duration = connectedSinceRef.current === null ? 0 : Math.floor((Date.now() - connectedSinceRef.current) / 1000)
-          void logCall(active, connectedRef.current ? 'completed' : 'failed', duration)
+          void logCall(disconnectedCall, connectedRef.current ? 'completed' : 'failed', duration)
           releaseMedia()
-          updateCall({ ...active, status: 'failed', error: 'The connection was lost. Check your network and try again.' })
+          updateCall({ ...disconnectedCall, status: 'failed', error: 'The connection was lost. Check your network and try again.' })
         }, 15000)
       } else if (peer.connectionState === 'closed') {
         setRemoteStream(null)
@@ -278,10 +297,13 @@ export function CallProvider({ children }: { children: ReactNode }) {
       void logCall(failed, 'failed')
       return
     }
-    const active: CallInfo = { id: uuid(), conversationId, peerId, peerName, peerAvatar, video, direction: 'outgoing', status: 'connecting' }
+    let active: CallInfo = { id: uuid(), conversationId, peerId, peerName, peerAvatar, video, direction: 'outgoing', status: 'connecting' }
     updateCall(active)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video })
+      const media = await getCallMedia(video)
+      active = { ...active, video: media.video, notice: media.notice }
+      updateCall(active)
+      const stream = media.stream
       if (!isCurrentCall(active.id)) {
         stream.getTracks().forEach((track) => track.stop())
         return
@@ -300,7 +322,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         conversation_id: conversationId,
         peer_name: profile?.display_name || 'Someone',
         peer_avatar: profile?.avatar_path ?? undefined,
-        video,
+        video: active.video,
         description: offer,
       })
       if (!isCurrentCall(active.id)) {
@@ -335,7 +357,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   }, [addLocalTracks, cleanup, isCurrentCall, logCall, makePeer, me, profile?.display_name, profile?.avatar_path, send, updateCall])
 
   const acceptCall = useCallback(async () => {
-    const active = callRef.current
+    let active = callRef.current
     const offer = offerRef.current
     if (!active || active.direction !== 'incoming' || active.status !== 'ringing' || !offer) return
     window.clearTimeout(ringTimerRef.current)
@@ -346,7 +368,10 @@ export function CallProvider({ children }: { children: ReactNode }) {
     }
     updateCall({ ...active, status: 'connecting' })
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: active.video })
+      const media = await getCallMedia(active.video)
+      active = { ...active, video: media.video, notice: media.notice, status: 'connecting' }
+      updateCall(active)
+      const stream = media.stream
       if (!isCurrentCall(active.id)) {
         stream.getTracks().forEach((track) => track.stop())
         return
@@ -364,6 +389,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
         type: 'answer',
         call_id: active.id,
         conversation_id: active.conversationId,
+        video: active.video,
         description: answer,
       })
       if (!isCurrentCall(active.id)) {
@@ -424,6 +450,11 @@ export function CallProvider({ children }: { children: ReactNode }) {
   }, [call?.direction, call?.id, call?.status])
 
   useEffect(() => {
+    if (call?.direction !== 'outgoing' || call.status !== 'ringing') return
+    return startRingback(call.id)
+  }, [call?.direction, call?.id, call?.status])
+
+  useEffect(() => {
     const off = rt.on('call', (value: unknown) => {
       const signal = value as Signal | undefined
       if (!signal || signal.to !== me || !signal.from || !signal.call_id || !signal.conversation_id) return
@@ -463,6 +494,13 @@ export function CallProvider({ children }: { children: ReactNode }) {
       }
       if (!active || signal.call_id !== active.id || signal.from !== active.peerId) return
       if (signal.type === 'answer' && signal.description && peerRef.current) {
+        if (signal.video === false && active.video) {
+          updateCall({
+            ...active,
+            video: false,
+            notice: 'The other person’s camera is unavailable. Continuing as an audio call.',
+          })
+        }
         void peerRef.current.setRemoteDescription(signal.description).then(async () => {
           for (const candidate of remoteIceQueue.current.splice(0)) {
             await peerRef.current?.addIceCandidate(candidate)
@@ -570,6 +608,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
 
             {call.status === 'failed' && (
               <p role="alert" className="relative z-10 mx-5 mb-3 rounded-xl border border-red-300/20 bg-red-950/50 px-4 py-3 text-center text-sm text-red-200 sm:mx-auto sm:max-w-xl">{call.error}</p>
+            )}
+            {call.notice && (
+              <p role="status" className="relative z-10 mx-5 mb-3 rounded-xl border border-amber-300/20 bg-amber-950/40 px-4 py-3 text-center text-sm text-amber-100 sm:mx-auto sm:max-w-xl">{call.notice}</p>
             )}
 
             <footer className="relative z-10 flex flex-col items-center gap-5 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 sm:pb-8">

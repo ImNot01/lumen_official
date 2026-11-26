@@ -129,7 +129,7 @@ export default function Composer({ editing, reply, onSend, onSaveEdit, onCancel,
           placeholder="Message"
           maxLength={4000}
           enterKeyHint="enter"
-          className="max-h-40 min-h-[44px] flex-1 resize-none rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-[16px] outline-none transition placeholder:text-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-500/30 dark:border-white/10 dark:bg-white/5 dark:focus:border-brand-400"
+          className="scrollbar-none max-h-40 min-h-[44px] flex-1 resize-none overflow-y-auto rounded-2xl border border-slate-200 bg-white/80 px-4 py-2.5 text-[16px] outline-none transition placeholder:text-slate-400 focus:border-brand-600 focus:ring-2 focus:ring-brand-500/30 dark:border-white/10 dark:bg-white/5 dark:focus:border-brand-400"
         />
         <button
           type="button"
