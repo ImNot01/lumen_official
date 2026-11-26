@@ -14,7 +14,7 @@ export function unlockAudio() {
   })
 }
 
-function playTone(frequency: number, duration: number, delay = 0, volume = 0.07) {
+function playTone(frequency: number, duration: number, delay = 0, volume = 0.07, waveform: OscillatorType = 'sine') {
   const context = getAudioContext()
   if (!context) return
 
@@ -23,7 +23,7 @@ function playTone(frequency: number, duration: number, delay = 0, volume = 0.07)
     const gain = context.createGain()
     const startAt = context.currentTime + delay
     const endAt = startAt + duration
-    oscillator.type = 'sine'
+    oscillator.type = waveform
     oscillator.frequency.setValueAtTime(frequency, startAt)
     gain.gain.setValueAtTime(0.0001, startAt)
     gain.gain.exponentialRampToValueAtTime(volume, startAt + 0.025)
@@ -62,9 +62,9 @@ export function startRingtone(callId: string): () => void {
   let stopped = false
   const ring = () => {
     if (stopped) return
-    playTone(494, 0.3, 0, 0.048)
-    playTone(587, 0.38, 0.36, 0.048)
-    playTone(494, 0.3, 0.8, 0.048)
+    playTone(494, 0.32, 0, 0.038, 'triangle')
+    playTone(659, 0.34, 0.38, 0.038, 'triangle')
+    playTone(494, 0.32, 0.82, 0.038, 'triangle')
   }
   ring()
   const timer = window.setInterval(ring, 3600)
@@ -93,8 +93,8 @@ export function startRingback(callId: string): () => void {
   let stopped = false
   const ring = () => {
     if (stopped) return
-    playTone(440, 0.62, 0, 0.042)
-    playTone(494, 0.62, 0.75, 0.042)
+    playTone(494, 0.44, 0, 0.038, 'triangle')
+    playTone(659, 0.44, 0.52, 0.038, 'triangle')
   }
   ring()
   const timer = window.setInterval(ring, 4000)
