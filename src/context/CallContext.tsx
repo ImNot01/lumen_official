@@ -5,6 +5,7 @@ import { uuid } from '../lib/chat'
 import { useAuth } from './AuthContext'
 import { useRealtime } from './RealtimeContext'
 import { Avatar } from '../components/Avatar'
+import { startRingtone } from '../lib/sounds'
 
 type CallStatus = 'ringing' | 'connecting' | 'connected' | 'failed'
 type CallInfo = {
@@ -416,6 +417,11 @@ export function CallProvider({ children }: { children: ReactNode }) {
     const timer = window.setInterval(updateDuration, 1000)
     return () => window.clearInterval(timer)
   }, [call?.id, call?.status])
+
+  useEffect(() => {
+    if (call?.direction !== 'incoming' || call.status !== 'ringing') return
+    return startRingtone(call.id)
+  }, [call?.direction, call?.id, call?.status])
 
   useEffect(() => {
     const off = rt.on('call', (value: unknown) => {

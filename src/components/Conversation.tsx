@@ -765,7 +765,7 @@ export default function Conversation({ id }: { id: string }) {
       </header>
 
       <div className="relative min-h-0 flex-1">
-        <div ref={scrollRef} onScroll={onScroll} className="h-full space-y-1.5 overflow-y-auto overscroll-contain px-3 py-4">
+        <div ref={scrollRef} onScroll={onScroll} className="scrollbar-none h-full space-y-1.5 overflow-y-auto overscroll-contain px-3 py-4">
           {loadingMore && <div className="flex justify-center py-2 text-brand-600"><Spinner className="h-5 w-5" /></div>}
           {!hasMore && msgs.length === 0 && (
             <p className="py-16 text-center text-[15px] text-slate-500 dark:text-slate-400">No messages yet. Say hello to {title}.</p>

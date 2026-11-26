@@ -55,9 +55,17 @@ body {
   100% { transform: scale(1.8); opacity: 0; }
 }
 
-.animate-fade-in { animation: lumen-fade-in 0.22s ease-out both; }
-.animate-pop-in { animation: lumen-pop-in 0.16s cubic-bezier(0.16, 1, 0.3, 1) both; }
-.animate-slide-up { animation: lumen-slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-fade-in { animation: lumen-fade-in 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-pop-in { animation: lumen-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.animate-slide-up { animation: lumen-slide-up 0.24s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

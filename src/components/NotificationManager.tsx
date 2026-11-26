@@ -7,6 +7,7 @@ import { useActiveChat } from '../context/ActiveChatContext'
 import { previewOf } from '../lib/chat'
 import type { Msg } from '../lib/chat'
 import { getPermission, registerPushSubscription, showNotification } from '../lib/notify'
+import { playMessageSound, unlockAudio } from '../lib/sounds'
 
 /** Mounted once near the app root. Renders nothing; only listens and notifies. */
 export default function NotificationManager() {
@@ -20,8 +21,63 @@ export default function NotificationManager() {
   rowsRef.current = rows
   const activeRef = useRef(activeId)
   activeRef.current = activeId
+  const tabId = useRef(`${Date.now()}-${Math.random().toString(36).slice(2)}`)
   const previousForegroundAt = useRef<number | null>(null)
   const recoveredNotificationIds = useRef(new Set<string>())
+
+  useEffect(() => {
+    const unlock = () => {
+      unlockAudio()
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+    window.addEventListener('pointerdown', unlock)
+    window.addEventListener('keydown', unlock)
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      window.removeEventListener('keydown', unlock)
+    }
+  }, [])
+
+  useEffect(() => {
+    const key = 'lumen:focused-chat'
+    const publishFocus = () => {
+      try {
+        const stored = localStorage.getItem(key)
+        const current = stored ? JSON.parse(stored) as { tabId?: string } : null
+        if (document.visibilityState === 'visible' && document.hasFocus() && activeRef.current) {
+          localStorage.setItem(key, JSON.stringify({
+            tabId: tabId.current,
+            chatId: activeRef.current,
+            updatedAt: Date.now(),
+          }))
+        } else if (current?.tabId === tabId.current) {
+          localStorage.removeItem(key)
+        }
+      } catch (error) {
+        console.error('Could not synchronize the focused conversation between tabs', error)
+      }
+    }
+
+    publishFocus()
+    const timer = window.setInterval(publishFocus, 10000)
+    window.addEventListener('focus', publishFocus)
+    window.addEventListener('blur', publishFocus)
+    document.addEventListener('visibilitychange', publishFocus)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', publishFocus)
+      window.removeEventListener('blur', publishFocus)
+      document.removeEventListener('visibilitychange', publishFocus)
+      try {
+        const stored = localStorage.getItem(key)
+        const current = stored ? JSON.parse(stored) as { tabId?: string } : null
+        if (current?.tabId === tabId.current) localStorage.removeItem(key)
+      } catch (error) {
+        console.error('Could not clear the focused conversation between tabs', error)
+      }
+    }
+  }, [activeId])
 
   useEffect(() => {
     const key = 'lumen:last-foreground-at'
@@ -75,7 +131,38 @@ export default function NotificationManager() {
       if (!rec?.sender_id || rec.sender_id === me) return
       const row = rowsRef.current.find((item) => item.cid === rec.conversation_id)
       if (row?.muted) return
-      if (activeRef.current === rec.conversation_id && document.visibilityState === 'visible') return
+      let watchingConversation = activeRef.current === rec.conversation_id &&
+        document.visibilityState === 'visible' &&
+        document.hasFocus()
+      try {
+        const stored = localStorage.getItem('lumen:focused-chat')
+        const focused = stored ? JSON.parse(stored) as { chatId?: string; updatedAt?: number } : null
+        if (focused?.chatId === rec.conversation_id && Date.now() - (focused.updatedAt ?? 0) < 15000) {
+          watchingConversation = true
+        }
+      } catch (error) {
+        console.error('Could not read the focused conversation between tabs', error)
+      }
+      if (!watchingConversation) {
+        const soundKey = `lumen:message-sound:${rec.id}`
+        try {
+          if (!localStorage.getItem(soundKey)) {
+            const claim = `${tabId.current}:${Date.now()}`
+            localStorage.setItem(soundKey, claim)
+            window.setTimeout(() => {
+              try {
+                if (localStorage.getItem(soundKey) === claim) localStorage.removeItem(soundKey)
+              } catch (error) {
+                console.error('Could not clear the message sound marker', error)
+              }
+            }, 30000)
+            playMessageSound()
+          }
+        } catch (error) {
+          console.error('Could not coordinate message sounds between tabs', error)
+          playMessageSound()
+        }
+      }
       const title = (row?.ctype === 'group' ? row.cname : row?.other_display_name) ?? 'New message'
       const body = previewOf(rec.kind, rec.body, false)
       void showNotification(title, body, `/chat/${rec.conversation_id}`, `lumen-message-${rec.id}`)
